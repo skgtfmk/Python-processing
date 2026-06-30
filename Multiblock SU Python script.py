@@ -94,12 +94,12 @@ while current_row < max_row:
                 except ValueError:
                     pass
             row_n += 1
-        # Wait until the correct layer before calculating the plate stats
         plateMedian = Calc_median(myTSarray)
         ts_result_AD = [abs(x - plateMedian) for x in myTSarray]
         plateMAD = Calc_median(ts_result_AD)*1.4826
         logger.info('Raw data layer=' + str(raw_data_layer) +' Plate number=' + str(plate_n) + ' Median=' + str(plateMedian) + ' MAD=' + str(plateMAD))
         myplate = results.get(0)
+        # Wait until the correct layer before calculating the plate stats
         if plate_n+1 == int(raw_data_layer):
             myplate.addProperty('Plate_Median', str(plateMedian))
             myplate.addProperty('Plate_MAD', str(plateMAD))
