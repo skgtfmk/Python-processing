@@ -63,7 +63,7 @@ for i,r in enumerate(range(1,sheet1.getNumRows(),1)):
     row.addCell(tcWcfRemaining_60Min, sheet1.getCellValue(r,12))
     row.addCell(tcNcfRemaining_60Min, sheet1.getCellValue(r,13))
     row.addCell(tcKElimination_Per_Min, sheet1.getCellValue(r,14))
-    row.addCell(tcUploadDate, sheet1.getCellValue(r,15))
+#    row.addCell(tcUploadDate, sheet1.getCellValue(r,15))
     row.addCell(tcTimeMin, sheet1.getCellValue(r,16))
     row.addCell(tcPctRemaininig_Ts, sheet1.getCellValue(r,17))
     row.addCell(tcLnPct_Remaininig_Ts, sheet1.getCellValue(r,18))
