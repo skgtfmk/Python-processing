@@ -6,7 +6,7 @@
 
 from com.dotmatics.dataig.studies import StudyUtils
 from java.io import File
-import re
+import re, os
 import datetime
 
 def Calc_median(list_data):
@@ -20,13 +20,14 @@ numrows = results.getNumRows()
 numcols = results.getNumCols()
 # Read data from file.
 f = StudyUtils.convertExcelToArrayList(File(orig_file))
+plate_name = os.path.splitext(os.path.basename(orig_file))[0]
+
 max_row = len(f)
 properties = results.getExperimentProperties()
 if 'Block identifier' in properties:
     start_regex = properties.get('Block identifier').getPropertyValue()
 else:
-    #look for number and full stop, as in "1. Raw Data (337/665 A)"
-    start_regex = '\d\. .*' #'\d{1,2}(\t\d{1,2})+' #'\d\. .*'
+    start_regex = '\d\. .*\((.*)\)' #'\d{1,2}(\t\d{1,2})+' #'\d\. .*'
 if 'Raw data layer' in properties:
     raw_data_layer = properties.get('Raw data layer').getPropertyValue()
 else:
@@ -59,14 +60,19 @@ while current_row < max_row:
             plate_date = datetime.datetime.now()
 #        logger.info('Plate name = ' + plate_id + 'Date =' + str(plate_date))
 
-    regex_match = re.findall(start_regex, ','.join(f[current_row]))
+    regex_match = re.search(start_regex, ','.join(f[current_row]))
     current_row += 1
-    if len(regex_match) > 0:
+    if regex_match:
         blockFound = True
     if blockFound:
         blockFound = False
-        logger.info('Block found on ' + str(current_row) + ': ' + regex_match[0])
+        logger.info('Block found on ' + str(current_row) + ': ' + regex_match.group(0))
         
+        try:
+            block_label = regex_match.group(1)
+        except:
+            block_label = regex_match.group(0)
+
         # Plate 0 is the 1st plate and is pre-prepared before the Python process starts.
         # Other plates need to be added before use.
         if plate_n > 0:
@@ -94,14 +100,15 @@ while current_row < max_row:
                 except ValueError:
                     pass
             row_n += 1
+        # Wait until the correct layer before calculating the plate stats
         plateMedian = Calc_median(myTSarray)
         ts_result_AD = [abs(x - plateMedian) for x in myTSarray]
         plateMAD = Calc_median(ts_result_AD)*1.4826
         logger.info('Raw data layer=' + str(raw_data_layer) +' Plate number=' + str(plate_n) + ' Median=' + str(plateMedian) + ' MAD=' + str(plateMAD))
-        myplate = results.get(0)
-        # Wait until the correct layer before calculating the plate stats
+#        myplate = results.get(0)
         if plate_n+1 == int(raw_data_layer):
             myplate.addProperty('Plate_Median', str(plateMedian))
             myplate.addProperty('Plate_MAD', str(plateMAD))
-
+        myplate.addProperty('HTRF block', block_label)
+        myplate.setName(block_label + '_' + plate_name)
         plate_n += 1
