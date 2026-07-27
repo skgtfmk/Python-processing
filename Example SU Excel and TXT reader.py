@@ -1,0 +1,93 @@
+# Read blocks of data from an Excel file.
+# Each block starts at the line following a regular expression from the per-study
+# property "block identifier" and runs for for the full size of the plate.
+# The actual value is stored in the plate property "block identifier".
+from com.dotmatics.dataig.studies import StudyUtils
+from com.dotmatics.dataig.studies.dataparser.processor import ExcelFileProcessor
+from com.dotmatics.dataig.studies.dataparser.builder import TableBuilder
+from com.dotmatics.dataig.studies.dataparser.data import Row
+from java.io import File
+import re
+import os.path
+import csv
+def Calc_median(list_data):
+    list_data.sort()
+    mid = len(list_data)//2
+    return (list_data[mid] + list_data[~mid])/2
+def txt_reader(file_path, dialect):
+    fle = open(file_path, "r")
+    reader = csv.reader(fle, dialect)
+    return([line for line in reader])
+def read_data(data_path):
+    file_ext = os.path.splitext(data_path)[1]
+    if file_ext in [".xlsx", ".xls"]:
+        file_data = StudyUtils.convertExcelToArrayList(File(data_path))
+    elif file_ext == ".csv":
+        file_data = txt_reader(data_path, "excel")
+    elif file_ext == ".txt":
+        file_data = txt_reader(data_path, "excel-tab")
+    else:
+        exit("File format: %s is unsupported" % file_ext)
+    return file_data
+# 1-indexed column in which the data block starts.
+logger.info('Starting Script Py Luminescence')
+data_start_column = 2
+blockHeaderRows = 0
+numrows = results.getNumRows()
+numcols = results.getNumCols()
+# Read data from file.
+f = read_data(orig_file)
+max_row = len(f)
+properties = results.getExperimentProperties()
+if 'block identifier' in properties:
+    start_regex = properties.get('block identifier').getPropertyValue()
+else:
+    start_regex = 'Raw Data'
+#logger.info(f[13])
+plate_n = 0
+current_row = 0
+regex_match = []
+blockFound = False
+blockStartRow = 0
+plate_name=''
+# Loop for each plate.
+    # Look for start regex.
+while current_row < max_row:
+#    logger.info(str(current_row) + ':' + ','.join(f[current_row]))
+    pl_re = re.search('ID1: (.*),ID3: (.*)', ','.join(f[current_row]))
+    if pl_re:
+        plate_name = pl_re.group(1)
+        logger.info('Plate name is ' + plate_name)
+    regex_match = re.findall(start_regex, ','.join(f[current_row]))
+    current_row += 1
+    if len(regex_match) > 0:
+        blockFound = True
+        blockStartRow = current_row + blockHeaderRows
+        logger.info('Block found on ' + str(current_row) + ': ' + regex_match[0])
+    if blockFound and current_row > blockStartRow:
+        blockFound = False
+        # Plate 0 is the 1st plate and is pre-prepared before the Python process starts.
+        # Other plates need to be added before use.
+        if plate_n > 0:
+            results.add()
+        myplate = results.get(plate_n)
+        myplate.setName(plate_name)
+        myplate.setBarcode(plate_name)
+    #   myplate.addProperty('block identifier', regex_match[0])
+        myarray = myplate.getResults()
+        myTSarray = []
+        # Add data to array.
+        row_n = 0
+        current_row += 1  #Ignore the column labels
+        while current_row < max_row and row_n < numrows:
+            this_row = f[current_row]
+            current_row += 1
+            for column_n in range(min(len(this_row) - data_start_column + 1, numcols)):
+                try:
+                    myarray[row_n][column_n] = float(this_row[column_n + data_start_column - 1])
+                    myTSarray.append(myarray[row_n][column_n])
+                except ValueError:
+                    pass
+            row_n += 1
+        plate_n += 1
+logger.info('Script Py Luminescence is finished')
