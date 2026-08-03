@@ -39,6 +39,40 @@ def read_data(data_path):
         exit("File format: %s is unsupported" % file_ext)
     return file_data
 
+def get_plate_parameters (fContents):
+    current_r =0
+    lPlate_Id = None
+    lPlate_date = None
+    lplate_time = None
+    while current_r < len(fContents) :
+        if lPlate_Id is None:
+            re_prop = re.search('File = (.*).fmp',','.join(fContents[current_r]))
+            if re_prop:
+        #       logger.info(re_prop.group(1), re_prop.group(2))
+                try:
+                    lPlate_Id = os.path.basename(re_prop.group(1))
+                except:
+                    lPlate_Id = 'Plate ' + str(plate_n)
+        if lPlate_date is None:
+            re_prop = re.search('End Date = (.*)',','.join(fContents[current_r]))
+            if re_prop:
+        #       logger.info(re_prop.group(1), re_prop.group(2))
+                try:
+                    lPlate_date = re_prop.group(1)
+                except:
+                    lPlate_date = datetime.datetime.today().strftime('%Y-%m-%d')
+        if lplate_time is None:
+            re_prop = re.search('End Time = (.*)',','.join(fContents[current_r]))
+            if re_prop:
+        #       logger.info(re_prop.group(1), re_prop.group(2))
+                try:
+                    lplate_time = re_prop.group(1)
+                except:
+                    lplate_time = datetime.datetime.today().strftime('%H:%M:%S')
+        current_r += 1
+    logger.info(lPlate_date, lplate_time )
+    return lPlate_Id, lPlate_date + ' ' + lplate_time
+
 # 1-indexed column in which the data block starts.
 data_start_column = 2
 numrows = results.getNumRows()
@@ -46,6 +80,7 @@ numcols = results.getNumCols()
 # Read data from file.
 f = read_data(orig_file)
 #f = StudyUtils.convertExcelToArrayList(File(orig_file))
+#Default plate name is the file name. Otherwise, look for the word 'plate' in the file name
 plate_name = os.path.splitext(os.path.basename(orig_file))[0]
 re_name = re.search('plate \d{1,2}', plate_name, re.I)
 if re_name:
@@ -56,11 +91,13 @@ properties = results.getExperimentProperties()
 if 'Block identifier' in properties:
     start_regex = properties.get('Block identifier').getPropertyValue()
 else:
-    start_regex = '\d\. .*\((.*)\)' #'\d{1,2}(\t\d{1,2})+' #'\d\. .*'
+    start_regex = 'Statistic = (.*)' 
+
+#Get raw data layer on which to calculate plate statistics
 if 'Raw data layer' in properties:
     raw_data_layer = properties.get('Raw data layer').getPropertyValue()
 else:
-    raw_data_layer = 1
+    raw_data_layer = 0
     
 #logger.info(f[13])
 plate_n = 0
@@ -70,24 +107,13 @@ blockFound = False
 plate_id = ''
 plate_date = ''
 
+plate_id, plate_date = get_plate_parameters(f)
 # Loop for each plate.
     # Look for start regex.
 while current_row < max_row:
 #    logger.info(str(current_row)+ '.'.join(f[current_row]))
 #    logger.info(f[current_row])
     #Get plate ID and the date/time
-    re_prop = re.search('ID(\d):\s*(.+?)\s*$',','.join(f[current_row]))
-    if re_prop:
- #       logger.info(re_prop.group(1), re_prop.group(2))
-        try:
-            if re_prop.group(1) == '1':
-                plate_id = re_prop.group(2)
-            elif re_prop.group(1) == '3':
-                plate_date = re_prop.group(2)
-        except:
-            plate_id = 'Plate ' + str(plate_n)
-            plate_date = datetime.datetime.now()
-#        logger.info('Plate name = ' + plate_id + 'Date =' + str(plate_date))
 
     regex_match = re.search(start_regex, ','.join(f[current_row]))
     current_row += 1
@@ -118,7 +144,7 @@ while current_row < max_row:
         myTSarray = []
         # Add data to array.
         row_n = 0
-        current_row += 1  #Ignore the column labels
+        current_row += 2  #Ignore the column labels
         while current_row < max_row and row_n < numrows:
             this_row = f[current_row]
             current_row += 1
@@ -135,10 +161,17 @@ while current_row < max_row:
         plateMAD = Calc_median(ts_result_AD)*1.4826
         logger.info('Raw data layer=' + str(raw_data_layer) +' Plate number=' + str(plate_n) + ' Median=' + str(plateMedian) + ' MAD=' + str(plateMAD))
 #        myplate = results.get(0)
-        if plate_n+1 == int(raw_data_layer):
+        if raw_data_layer > 0:
+            if plate_n+1 == int(raw_data_layer):
+                myplate.addProperty('Plate_Median', str(plateMedian))
+                myplate.addProperty('Plate_MAD', str(plateMAD))
+        else:
             myplate.addProperty('Plate_Median', str(plateMedian))
             myplate.addProperty('Plate_MAD', str(plateMAD))
-        myplate.addProperty('HTRF block', get_HTRF_block(block_label))
+
+        myplate.addProperty('Raw Data Block', block_label)
+        myplate.addProperty('Plate End Time', plate_date)
+        myplate.addProperty('Source File', plate_id)
         myplate.setName(block_label + "-" + plate_name)
         myplate.setBarcode(plate_name)
         plate_n += 1
