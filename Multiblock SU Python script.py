@@ -6,22 +6,51 @@
 
 from com.dotmatics.dataig.studies import StudyUtils
 from java.io import File
-import re, os
+import re
 import datetime
+import os.path
+import csv
 
 def Calc_median(list_data):
     list_data.sort()
     mid = len(list_data)//2
     return (list_data[mid] + list_data[~mid])/2
+def get_HTRF_block(layerName):
+    htrfBlock = {"337/665 A":"665nm", "337/620 B":"620nm",
+        "337 / 665 / 620":"Ratio","calculated":"Interpolated data"}
+    if layerName in htrfBlock.keys():
+        return htrfBlock[layerName]
+    else:
+        return layerName
+
+def txt_reader(file_path, dialect):
+    fle = open(file_path, "r")
+    reader = csv.reader(fle, dialect)
+    return([line for line in reader])
+def read_data(data_path):
+    file_ext = os.path.splitext(data_path)[1]
+    if file_ext in [".xlsx", ".xls"]:
+        file_data = StudyUtils.convertExcelToArrayList(File(data_path))
+    elif file_ext == ".csv":
+        file_data = txt_reader(data_path, "excel")
+    elif file_ext == ".txt":
+        file_data = txt_reader(data_path, "excel-tab")
+    else:
+        exit("File format: %s is unsupported" % file_ext)
+    return file_data
 
 # 1-indexed column in which the data block starts.
 data_start_column = 2
 numrows = results.getNumRows()
 numcols = results.getNumCols()
 # Read data from file.
-f = StudyUtils.convertExcelToArrayList(File(orig_file))
+f = read_data(orig_file)
+#f = StudyUtils.convertExcelToArrayList(File(orig_file))
 plate_name = os.path.splitext(os.path.basename(orig_file))[0]
-
+re_name = re.search('plate \d{1,2}', plate_name, re.I)
+if re_name:
+    plate_name = re_name.group(0)
+    
 max_row = len(f)
 properties = results.getExperimentProperties()
 if 'Block identifier' in properties:
@@ -109,6 +138,7 @@ while current_row < max_row:
         if plate_n+1 == int(raw_data_layer):
             myplate.addProperty('Plate_Median', str(plateMedian))
             myplate.addProperty('Plate_MAD', str(plateMAD))
-        myplate.addProperty('HTRF block', block_label)
-        myplate.setName(block_label + '_' + plate_name)
+        myplate.addProperty('HTRF block', get_HTRF_block(block_label))
+        myplate.setName(block_label + "-" + plate_name)
+        myplate.setBarcode(plate_name)
         plate_n += 1
