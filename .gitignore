@@ -13,9 +13,3 @@ __pycache__/
 venv/
 .venv/
 env/
-CRO_MDCK_Permeability upload.py
-CRO_MICROSOMAL_STAB upload.py
-CRO_SOLUBILITY_DATA upload.py
-Example SU Excel and TXT reader.py
-Multiblock SU Python script.py
-QPCR_PLATE_CONDITIONS Template.py
