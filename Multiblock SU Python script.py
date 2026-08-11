@@ -95,7 +95,7 @@ while current_row < max_row:
         blockFound = True
     if blockFound:
         blockFound = False
-        logger.info('Block found on ' + str(current_row) + ': ' + regex_match.group(0))
+        logger.info('Block found on ' + str(current_row) + ': ' + regex_match.group(1))
         
         try:
             block_label = regex_match.group(1)

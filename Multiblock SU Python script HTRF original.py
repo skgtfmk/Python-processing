@@ -13,13 +13,6 @@ def Calc_median(list_data):
     list_data.sort()
     mid = len(list_data)//2
     return (list_data[mid] + list_data[~mid])/2
-def get_HTRF_block(layerName):
-    htrfBlock = {"337/665 A":"665nm", "337/620 B":"620nm",
-        "337 / 665 / 620":"Ratio","calculated":"Interpolated data"}
-    if layerName in htrfBlock.keys():
-        return htrfBlock[layerName]
-    else:
-        return layerName
 
 # 1-indexed column in which the data block starts.
 data_start_column = 2
@@ -32,7 +25,7 @@ properties = results.getExperimentProperties()
 if 'Block identifier' in properties:
     start_regex = properties.get('Block identifier').getPropertyValue()
 else:
-    start_regex = '\d\. .*\((.*)\)' #'\d{1,2}(\t\d{1,2})+' #'\d\. .*'
+    start_regex = '\d\. .*' #'\d{1,2}(\t\d{1,2})+' #'\d\. .*'
 if 'Raw data layer' in properties:
     raw_data_layer = properties.get('Raw data layer').getPropertyValue()
 else:
@@ -65,19 +58,14 @@ while current_row < max_row:
             plate_date = datetime.datetime.now()
 #        logger.info('Plate name = ' + plate_id + 'Date =' + str(plate_date))
 
-    regex_match = re.search(start_regex, ','.join(f[current_row]))
+    regex_match = re.findall(start_regex, ','.join(f[current_row]))
     current_row += 1
-    if regex_match:
+    if len(regex_match) > 0:
         blockFound = True
     if blockFound:
         blockFound = False
-        logger.info('Block found on ' + str(current_row) + ': ' + regex_match.group(1))
+        logger.info('Block found on ' + str(current_row) + ': ' + regex_match[0])
         
-        try:
-            block_label = regex_match.group(1)
-        except:
-            block_label = regex_match.group(0)
-
         # Plate 0 is the 1st plate and is pre-prepared before the Python process starts.
         # Other plates need to be added before use.
         if plate_n > 0:
@@ -114,8 +102,5 @@ while current_row < max_row:
         if plate_n+1 == int(raw_data_layer):
             myplate.addProperty('Plate_Median', str(plateMedian))
             myplate.addProperty('Plate_MAD', str(plateMAD))
-        myplate.addProperty('HTRF block', get_HTRF_block(block_label))
-        myplate.setName(block_label + "-" + plate_id)
-#        myplate.setBarcode(plate_name)
 
         plate_n += 1
