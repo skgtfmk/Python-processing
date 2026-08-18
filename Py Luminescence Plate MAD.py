@@ -4,19 +4,47 @@
 # The actual value is stored in the plate property "block identifier".
 from com.dotmatics.dataig.studies import StudyUtils
 from java.io import File
-import re
+import re, os
+import csv
 
 def Calc_median(list_data):
     list_data.sort()
     mid = len(list_data)//2
     return (list_data[mid] + list_data[~mid])/2
 
+def txt_reader(file_path, dialect):
+    fle = open(file_path, "r")
+    reader = csv.reader(fle, dialect)
+    return([line for line in reader])
+
+def read_data(data_path):
+    file_ext = os.path.splitext(data_path)[1]
+    if file_ext in [".xlsx", ".xls"]:
+        file_data = StudyUtils.convertExcelToArrayList(File(data_path))
+    elif file_ext == ".csv":
+        file_data = txt_reader(data_path, "excel")
+    elif file_ext == ".txt":
+        file_data = txt_reader(data_path, "excel-tab")
+    else:
+        exit("File format: %s is unsupported" % file_ext)
+    return file_data
+
 # 1-indexed column in which the data block starts.
 data_start_column = 2
 numrows = results.getNumRows()
 numcols = results.getNumCols()
 # Read data from file.
-f = StudyUtils.convertExcelToArrayList(File(orig_file))
+f = read_data(orig_file)
+#f = StudyUtils.convertExcelToArrayList(File(orig_file))
+
+#set the default plate name to the file name
+plate_name = os.path.splitext(os.path.basename(orig_file))[0]
+#Look for a plate number in the file name
+re_name = re.search('plate \d{1,2}', plate_name, re.I)
+if re_name:
+    plate_name = re_name.group(0)
+
+
 max_row = len(f)
 properties = results.getExperimentProperties()
 if 'block identifier' in properties:
@@ -63,5 +91,5 @@ myplate.addProperty('Plate_Median', str(plateMedian))
 ts_result_AD = [abs(x - plateMedian) for x in myTSarray]
 plateMAD = Calc_median(ts_result_AD)*1.4826
 myplate.addProperty('Plate_MAD', str(plateMAD))
-
+myplate.setName(plate_name)
 plate_n += 1
