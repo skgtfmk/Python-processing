@@ -99,7 +99,7 @@ if 'Raw data layer' in properties:
 else:
     raw_data_layer = 0
     
-logger.info('Raw data layer ' + raw_data_layer)
+logger.info('Raw data layer ' + str(raw_data_layer))
 plate_n = 0
 current_row = 0
 regex_match = []
