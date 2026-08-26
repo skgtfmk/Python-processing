@@ -56,13 +56,13 @@ properties = results.getExperimentProperties()
 if 'Block identifier' in properties:
     start_regex = properties.get('Block identifier').getPropertyValue()
 else:
-    start_regex = '\d\. .*\((.*)\)' #'\d{1,2}(\t\d{1,2})+' #'\d\. .*'
+    start_regex = '^,\d\. .*\((.*)\)' #'\d{1,2}(\t\d{1,2})+' #'\d\. .*'
 if 'Raw data layer' in properties:
     raw_data_layer = properties.get('Raw data layer').getPropertyValue()
 else:
     raw_data_layer = 1
     
-#logger.info(f[13])
+logger.info(f)
 plate_n = 0
 current_row = 0
 regex_match = []
@@ -129,12 +129,11 @@ while current_row < max_row:
                 except ValueError:
                     pass
             row_n += 1
-        # Wait until the correct layer before calculating the plate stats
+        # Calculate the plate stats
         plateMedian = Calc_median(myTSarray)
         ts_result_AD = [abs(x - plateMedian) for x in myTSarray]
         plateMAD = Calc_median(ts_result_AD)*1.4826
         logger.info('Raw data layer=' + str(raw_data_layer) +' Plate number=' + str(plate_n) + ' Median=' + str(plateMedian) + ' MAD=' + str(plateMAD))
-#        myplate = results.get(0)
         if plate_n+1 == int(raw_data_layer):
             myplate.addProperty('Plate_Median', str(plateMedian))
             myplate.addProperty('Plate_MAD', str(plateMAD))
