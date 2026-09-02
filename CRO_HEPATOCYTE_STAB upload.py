@@ -1,7 +1,65 @@
 from com.dotmatics.dataig.studies.dataparser.processor import ExcelFileProcessor
 from com.dotmatics.dataig.studies.dataparser.builder import TableBuilder
 from com.dotmatics.dataig.studies.dataparser.data import Row
+from com.dotmatics.dataig.studies.dataparser.data import CellStatus
+from com.dotmatics.dataig.studies.dataparser.util import ScriptUtils
+
 import re, csv
+
+def validateCompound(columnID, testValue):
+    #Make sure the compound reference exists
+    projectId = 0
+    if testValue[0:4] == 'ARUK':
+        if len(testValue) == 11:
+            projectId = 45000 #SCREENING_COLLECTION
+            dataSourceKeys = '914_FORMATTED_ID'
+        elif len(testValue) == 15:
+            projectId = 55000 #DICTIONARIES
+            dataSourceKeys = '1154_FORMATTED_BATCH_ID'
+        elif len(testValue) == 19:
+            projectId = 55000 #DICTIONARIES
+            dataSourceKeys = '1155_FORMATTED_SAMPLE_ID'
+        else:
+            projectId = 45000 #SCREENING_COLLECTION
+            dataSourceKeys = '914_FORMATTED_ID'
+    else:
+        projectId = 45000 #SCREENING_COLLECTION
+        dataSourceKeys = '914_FORMATTED_ID' #'1153_FORMATTED_ID' #1153 is a lookup based on SUPPLIER_REF
+
+    cmpdMap = util.getProjectData(projectId, dataSourceKeys, testValue)
+#    logger.info(dataSourceKeys)
+#    logger.info(cmpdMap[testValue])
+    sampleIDcell = row.addCell(columnID, testValue)
+    if cmpdMap[testValue].isEmpty() is True:
+        sampleIDcell.setStatus(CellStatus.ERROR)
+        sampleIDcell.setMessage('Invalid sample ID')
+
+def validateMissing(columnID, testValue, seriousness):
+    #Check if a value is missing and report.
+    #seriousness = ['ERROR','WARN']
+    sampleIDcell = row.addCell(columnID, testValue)
+    if testValue is None:
+        if seriousness == 'ERROR':
+            sampleIDcell.setStatus(CellStatus.ERROR)
+            sampleIDcell.setMessage('Value required')
+        else:
+            sampleIDcell.setStatus(CellStatus.WARN)
+            sampleIDcell.setMessage('Value recommended')
+
+def validateOrganismStrain(columnID, testValue, insertValue, seriousness):
+    #Check if the organism (strain) is valid. testValue must be in that format, e.g. "Mouse (CD-1)".
+    #seriousness = ['ERROR','WARN']
+#    logger.info(testValue + ' insert ' + insertValue)
+    sampleIDcell = row.addCell(columnID, insertValue)
+    projectId = 55000 #DICTIONARIES
+    dataSourceKeys = '1146_ADME_ORGANISM'
+    speciesMap = util.getProjectData(projectId, dataSourceKeys, testValue)
+    if speciesMap[testValue].isEmpty() is True:
+        if seriousness == 'ERROR':
+            sampleIDcell.setStatus(CellStatus.ERROR)
+        else:
+            sampleIDcell.setStatus(CellStatus.WARN)
+        sampleIDcell.setMessage(testValue + ' is an invalid ORGANISM (STRAIN)')
 
 #parse excel file
 fp = ExcelFileProcessor(data.getFile())
@@ -47,19 +105,29 @@ for i,r in enumerate(range(1,sheet1.getNumRows(),1)):
     row = Row(i+1)
     data_block1.addRow(row)
 
-    row.addCell(tcFormattedId, sheet1.getCellValue(r,0))
+    validateCompound(tcFormattedId, sheet1.getCellValue(r,0))
     row.addCell(tcBatch, sheet1.getCellValue(r,1))
     row.addCell(tcStudyName, sheet1.getCellValue(r,2))
     row.addCell(tcStudyNumber, sheet1.getCellValue(r,3))
     row.addCell(tcCro, sheet1.getCellValue(r,4))
     row.addCell(tcAssayDate, sheet1.getCellValue(r,5))
-    row.addCell(tcSpecies, sheet1.getCellValue(r,6))
-    row.addCell(tcOrganismStrain, sheet1.getCellValue(r,7))
+    speciesStrain = sheet1.getCellValue(r,6) + ' (' + sheet1.getCellValue(r,7) + ')'
+    validateOrganismStrain(tcSpecies, speciesStrain, sheet1.getCellValue(r,6),'WARN')
+    validateOrganismStrain(tcOrganismStrain, speciesStrain, sheet1.getCellValue(r,7), 'ERROR')
+#    row.addCell(tcSpecies, sheet1.getCellValue(r,6))
+#    row.addCell(tcOrganismStrain, sheet1.getCellValue(r,7))
     row.addCell(tcSex, sheet1.getCellValue(r,8))
-    row.addCell(tcClintHep, sheet1.getCellValue(r,9))
-    row.addCell(tcClintHepUnits, sheet1.getCellValue(r,10))
-    row.addCell(tcClintLiver, sheet1.getCellValue(r,11))
-    row.addCell(tcClintLiverUnits, sheet1.getCellValue(r,12))
+
+    unitCheck = sheet1.getCellValue(r,9)
+    row.addCell(tcClintHep, unitCheck)
+    if unitCheck is not None:
+        validateMissing(tcClintHepUnits, sheet1.getCellValue(r,10),'ERROR')
+
+    unitCheck = sheet1.getCellValue(r,11)
+    row.addCell(tcClintLiver,unitCheck)
+    if unitCheck is not None:
+        validateMissing(tcClintLiverUnits, sheet1.getCellValue(r,12) , 'ERROR')
+
     row.addCell(tcHalfLifeMin, sheet1.getCellValue(r,13))
     row.addCell(tcHalfLifeQualifier, sheet1.getCellValue(r,14))
     row.addCell(tcKEliminationPerMin, sheet1.getCellValue(r,15))
