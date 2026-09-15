@@ -138,6 +138,7 @@ while current_row < max_row:
             myplate.addProperty('Plate_Median', str(plateMedian))
             myplate.addProperty('Plate_MAD', str(plateMAD))
         myplate.addProperty('HTRF block', get_HTRF_block(block_label))
-        myplate.setName(block_label + "-" + plate_name)
-        myplate.setBarcode(plate_name)
+        plate_name_short = block_label + '-' + plate_name[:75-len(block_label)]
+        myplate.setName(block_label + "-" + plate_name_short)
+        myplate.setBarcode(plate_name_short)
         plate_n += 1
