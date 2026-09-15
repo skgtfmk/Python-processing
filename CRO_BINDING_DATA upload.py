@@ -5,11 +5,12 @@ from com.dotmatics.dataig.studies.dataparser.data import CellStatus
 from com.dotmatics.dataig.studies.dataparser.util import ScriptUtils
 
 import re, csv
-
+#https://docs.dotmatics.com/platform/6.2/en/studies/how-to-guides/how-to-create-a-python-processing-script.html
 def validateCompound(columnID, testValue):
     #Make sure the compound reference exists
     projectId = 0
     if testValue[0:4] == 'ARUK':
+        returnType = 'validate'
         if len(testValue) == 11:
             projectId = 45000 #SCREENING_COLLECTION
             dataSourceKeys = '914_FORMATTED_ID'
@@ -23,16 +24,30 @@ def validateCompound(columnID, testValue):
             projectId = 45000 #SCREENING_COLLECTION
             dataSourceKeys = '914_FORMATTED_ID'
     else:
-        projectId = 45000 #SCREENING_COLLECTION
-        dataSourceKeys = '914_FORMATTED_ID' #'1153_FORMATTED_ID' #1153 is a lookup based on SUPPLIER_REF
+        returnType = 'convert'
+        projectId = 56000 #DICT_SUPPLIER_REF
+        dataSourceKeys = '1167_SUPPLIER_REF,1167_FORMATTED_ID'  #1167 is a lookup based on SUPPLIER_REF
 
+    logger.info ('Project ID is ' + str(projectId) + ', Datasource key is ' + dataSourceKeys + ' Test value is ' + testValue)
     cmpdMap = util.getProjectData(projectId, dataSourceKeys, testValue)
-#    logger.info(dataSourceKeys)
-#    logger.info(cmpdMap[testValue])
-    sampleIDcell = row.addCell(columnID, testValue)
-    if cmpdMap[testValue].isEmpty() is True:
+    supplier_map = cmpdMap[testValue]    
+ #   logger.info('Converting ' + testValue + ' supplier map ' + supplier_map.getDataSources()['56000']['1']['FORMATTED_ID'])
+
+    if supplier_map.isEmpty() is True:
+        returnValue = testValue
+        msg = 'Invalid sample ID'
+    else:
+        returnValue = testValue
+        msg = ''
+        if returnType == 'convert':
+            logger.info('Got to the Convert part')
+            returnValue = supplier_map.getDataSources()[56000]['1']['FORMATTED_ID']
+    logger.info('ARUK number for ' + testValue + ' is ' + str(returnValue))
+
+    sampleIDcell = row.addCell(columnID, returnValue)
+    if msg != '':
         sampleIDcell.setStatus(CellStatus.ERROR)
-        sampleIDcell.setMessage('Invalid sample ID')
+        sampleIDcell.setMessage(msg)
 
 def validateMissing(columnID, testValue, seriousness):
     #Check if a value is missing and report.
