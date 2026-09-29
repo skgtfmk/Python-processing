@@ -28,10 +28,10 @@ def validateCompound(columnID, testValue):
         projectId = 56000 #DICT_SUPPLIER_REF
         dataSourceKeys = '1167_SUPPLIER_REF,1167_FORMATTED_ID'  #1167 is a lookup based on SUPPLIER_REF
 
-    logger.info ('Project ID is ' + str(projectId) + ', Datasource key is ' + dataSourceKeys + ' Test value is ' + testValue)
+#    logger.info ('Project ID is ' + str(projectId) + ', Datasource key is ' + dataSourceKeys + ' Test value is ' + testValue)
     cmpdMap = util.getProjectData(projectId, dataSourceKeys, testValue)
     supplier_map = cmpdMap[testValue]    
- #   logger.info('Converting ' + testValue + ' supplier map ' + supplier_map.getDataSources()['56000']['1']['FORMATTED_ID'])
+#    logger.info(str(supplier_map.getDataSources()[1167][1]["FORMATTED_ID"]))
 
     if supplier_map.isEmpty() is True:
         returnValue = testValue
@@ -40,9 +40,9 @@ def validateCompound(columnID, testValue):
         returnValue = testValue
         msg = ''
         if returnType == 'convert':
-            logger.info('Got to the Convert part')
-            returnValue = supplier_map.getDataSources()[56000][1]['FORMATTED_ID']
-    logger.info('ARUK number for ' + testValue + ' is ' + str(returnValue))
+ #           logger.info('Got to the Convert part')
+            returnValue = supplier_map.getDataSources()['1167']['1']['FORMATTED_ID']
+ #   logger.info('ARUK number for ' + testValue + ' is ' + str(returnValue))
 
     sampleIDcell = row.addCell(columnID, returnValue)
     if msg != '':
