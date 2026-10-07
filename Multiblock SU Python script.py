@@ -1,3 +1,4 @@
+# Multiblock SU Python script
 # Read blocks of data from an Excel file.
 # Each block starts at the line following a regular expression from the per-study
 # property "Block identifier" and runs for for the full size of the plate.
@@ -56,7 +57,7 @@ properties = results.getExperimentProperties()
 if 'Block identifier' in properties:
     start_regex = properties.get('Block identifier').getPropertyValue()
 else:
-    start_regex = '^,\d\. .*\((.*)\)' #'\d{1,2}(\t\d{1,2})+' #'\d\. .*'
+    start_regex = '\d\. .*\((.*)\)' #'\d{1,2}(\t\d{1,2})+' #'\d\. .*'
 if 'Raw data layer' in properties:
     raw_data_layer = properties.get('Raw data layer').getPropertyValue()
 else:
@@ -139,6 +140,6 @@ while current_row < max_row:
             myplate.addProperty('Plate_MAD', str(plateMAD))
         myplate.addProperty('HTRF block', get_HTRF_block(block_label))
         plate_name_short = block_label + '-' + plate_name[:75-len(block_label)]
-        myplate.setName(block_label + "-" + plate_name_short)
+        myplate.setName(regex_match.group(0) + "-" + plate_name_short)
         myplate.setBarcode(plate_name_short)
         plate_n += 1
