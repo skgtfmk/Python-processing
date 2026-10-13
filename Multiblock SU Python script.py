@@ -143,3 +143,4 @@ while current_row < max_row:
         myplate.setName(regex_match.group(0) + "-" + plate_name_short)
         myplate.setBarcode(plate_name_short)
         plate_n += 1
+        
