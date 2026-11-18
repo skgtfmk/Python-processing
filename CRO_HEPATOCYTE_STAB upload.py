@@ -10,6 +10,7 @@ def validateCompound(columnID, testValue):
     #Make sure the compound reference exists
     projectId = 0
     if testValue[0:4] == 'ARUK':
+        returnType = 'validate'
         if len(testValue) == 11:
             projectId = 45000 #SCREENING_COLLECTION
             dataSourceKeys = '914_FORMATTED_ID'
@@ -23,16 +24,30 @@ def validateCompound(columnID, testValue):
             projectId = 45000 #SCREENING_COLLECTION
             dataSourceKeys = '914_FORMATTED_ID'
     else:
-        projectId = 45000 #SCREENING_COLLECTION
-        dataSourceKeys = '914_FORMATTED_ID' #'1153_FORMATTED_ID' #1153 is a lookup based on SUPPLIER_REF
+        returnType = 'convert'
+        projectId = 56000 #DICT_SUPPLIER_REF
+        dataSourceKeys = '1167_SUPPLIER_REF,1167_FORMATTED_ID'  #1167 is a lookup based on SUPPLIER_REF
 
+#    logger.info ('Project ID is ' + str(projectId) + ', Datasource key is ' + dataSourceKeys + ' Test value is ' + testValue)
     cmpdMap = util.getProjectData(projectId, dataSourceKeys, testValue)
-#    logger.info(dataSourceKeys)
-#    logger.info(cmpdMap[testValue])
-    sampleIDcell = row.addCell(columnID, testValue)
-    if cmpdMap[testValue].isEmpty() is True:
+    supplier_map = cmpdMap[testValue]    
+ #   logger.info('Converting ' + testValue + ' supplier map ' + supplier_map.getDataSources()['56000']['1']['FORMATTED_ID'])
+
+    if supplier_map.isEmpty() is True:
+        returnValue = testValue
+        msg = 'Invalid sample ID'
+    else:
+        returnValue = testValue
+        msg = ''
+        if returnType == 'convert':
+#            logger.info('Got to the Convert part')
+            returnValue = supplier_map.getDataSources()['1167']['1']['FORMATTED_ID']
+#    logger.info('ARUK number for ' + testValue + ' is ' + str(returnValue))
+
+    sampleIDcell = row.addCell(columnID, returnValue)
+    if msg != '':
         sampleIDcell.setStatus(CellStatus.ERROR)
-        sampleIDcell.setMessage('Invalid sample ID')
+        sampleIDcell.setMessage(msg)
 
 def validateMissing(columnID, testValue, seriousness):
     #Check if a value is missing and report.
@@ -84,8 +99,10 @@ tcAssayDate = table1.getColumnByName('ASSAY_DATE')
 tcSpecies = table1.getColumnByName('SPECIES')
 tcOrganismStrain = table1.getColumnByName('ORGANISM_STRAIN')
 tcSex = table1.getColumnByName('SEX')
+tcClintHepQual = table1.getColumnByName('CLINT_HEP_QUAL')
 tcClintHep = table1.getColumnByName('CLINT_HEP')
 tcClintHepUnits = table1.getColumnByName('CLINT_HEP_UNITS')
+tcClintLiverQual = table1.getColumnByName('CLINT_LIVER_QUAL')
 tcClintLiver = table1.getColumnByName('CLINT_LIVER')
 tcClintLiverUnits = table1.getColumnByName('CLINT_LIVER_UNITS')
 tcHalfLifeMin = table1.getColumnByName('HALF_LIFE_MIN')
@@ -117,23 +134,24 @@ for i,r in enumerate(range(1,sheet1.getNumRows(),1)):
 #    row.addCell(tcSpecies, sheet1.getCellValue(r,6))
 #    row.addCell(tcOrganismStrain, sheet1.getCellValue(r,7))
     row.addCell(tcSex, sheet1.getCellValue(r,8))
-
-    unitCheck = sheet1.getCellValue(r,9)
+    row.addCell(tcClintHepQual, sheet1.getCellValue(r,9))
+    unitCheck = sheet1.getCellValue(r,10)
     row.addCell(tcClintHep, unitCheck)
     if unitCheck is not None:
-        validateMissing(tcClintHepUnits, sheet1.getCellValue(r,10),'ERROR')
+        validateMissing(tcClintHepUnits, sheet1.getCellValue(r,11),'ERROR')
 
-    unitCheck = sheet1.getCellValue(r,11)
+    row.addCell(tcClintLiverQual, sheet1.getCellValue(r,12))
+    unitCheck = sheet1.getCellValue(r,13)
     row.addCell(tcClintLiver,unitCheck)
     if unitCheck is not None:
-        validateMissing(tcClintLiverUnits, sheet1.getCellValue(r,12) , 'ERROR')
+        validateMissing(tcClintLiverUnits, sheet1.getCellValue(r,14) , 'ERROR')
 
-    row.addCell(tcHalfLifeMin, sheet1.getCellValue(r,13))
-    row.addCell(tcHalfLifeQualifier, sheet1.getCellValue(r,14))
-    row.addCell(tcKEliminationPerMin, sheet1.getCellValue(r,15))
-    row.addCell(tcR2, sheet1.getCellValue(r,16))
-    row.addCell(tcTimeMin, sheet1.getCellValue(r,17))
-    row.addCell(tcPctRemaininigTs, sheet1.getCellValue(r,18))
-    row.addCell(tcLnPctRemaininigTs, sheet1.getCellValue(r,19))
+    row.addCell(tcHalfLifeMin, sheet1.getCellValue(r,15))
+    row.addCell(tcHalfLifeQualifier, sheet1.getCellValue(r,16))
+    row.addCell(tcKEliminationPerMin, sheet1.getCellValue(r,17))
+    row.addCell(tcR2, sheet1.getCellValue(r,18))
+    row.addCell(tcTimeMin, sheet1.getCellValue(r,19))
+    row.addCell(tcPctRemaininigTs, sheet1.getCellValue(r,20))
+    row.addCell(tcLnPctRemaininigTs, sheet1.getCellValue(r,21))
 
 logger.info('CRO_HEPATOCYTE_STAB script finished')
