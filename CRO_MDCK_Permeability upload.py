@@ -3,6 +3,61 @@ from com.dotmatics.dataig.studies.dataparser.builder import TableBuilder
 from com.dotmatics.dataig.studies.dataparser.data import Row
 import re, csv
 
+def validateCompound(columnID, testValue):
+    #Make sure the compound reference exists
+    projectId = 0
+    if testValue[0:4] == 'ARUK':
+        returnType = 'validate'
+        if len(testValue) == 11:
+            projectId = 45000 #SCREENING_COLLECTION
+            dataSourceKeys = '914_FORMATTED_ID'
+        elif len(testValue) == 15:
+            projectId = 55000 #DICTIONARIES
+            dataSourceKeys = '1154_FORMATTED_BATCH_ID'
+        elif len(testValue) == 19:
+            projectId = 55000 #DICTIONARIES
+            dataSourceKeys = '1155_FORMATTED_SAMPLE_ID'
+        else:
+            projectId = 45000 #SCREENING_COLLECTION
+            dataSourceKeys = '914_FORMATTED_ID'
+    else:
+        returnType = 'convert'
+        projectId = 56000 #DICT_SUPPLIER_REF
+        dataSourceKeys = '1167_SUPPLIER_REF,1167_FORMATTED_ID'  #1167 is a lookup based on SUPPLIER_REF
+
+#    logger.info ('Project ID is ' + str(projectId) + ', Datasource key is ' + dataSourceKeys + ' Test value is ' + testValue)
+    cmpdMap = util.getProjectData(projectId, dataSourceKeys, testValue)
+    supplier_map = cmpdMap[testValue]    
+ #   logger.info('Converting ' + testValue + ' supplier map ' + supplier_map.getDataSources()['56000']['1']['FORMATTED_ID'])
+
+    if supplier_map.isEmpty() is True:
+        returnValue = testValue
+        msg = 'Invalid sample ID'
+    else:
+        returnValue = testValue
+        msg = ''
+        if returnType == 'convert':
+#            logger.info('Got to the Convert part')
+            returnValue = supplier_map.getDataSources()['1167']['1']['FORMATTED_ID']
+#    logger.info('ARUK number for ' + testValue + ' is ' + str(returnValue))
+
+    sampleIDcell = row.addCell(columnID, returnValue)
+    if msg != '':
+        sampleIDcell.setStatus(CellStatus.ERROR)
+        sampleIDcell.setMessage(msg)
+
+def validateMissing(columnID, testValue, seriousness):
+    #Check if a value is missing and report.
+    #seriousness = ['ERROR','WARN']
+    sampleIDcell = row.addCell(columnID, testValue)
+    if testValue is None:
+        if seriousness == 'ERROR':
+            sampleIDcell.setStatus(CellStatus.ERROR)
+            sampleIDcell.setMessage('Value required')
+        else:
+            sampleIDcell.setStatus(CellStatus.WARN)
+            sampleIDcell.setMessage('Value recommended')
+
 #parse excel file
 fp = ExcelFileProcessor(data.getFile())
 f = fp.process()
@@ -47,7 +102,7 @@ for i,r in enumerate(range(1,sheet1.getNumRows(),1)):
     row = Row(i+1)
     data_block1.addRow(row)
 
-    row.addCell(tcFormattedId, sheet1.getCellValue(r,0))
+    validateCompound(tcFormattedId, sheet1.getCellValue(r,0))
     row.addCell(tcBatch, sheet1.getCellValue(r,1))
     row.addCell(tcCro, sheet1.getCellValue(r,2))
     row.addCell(tcAssayDate, sheet1.getCellValue(r,3))
